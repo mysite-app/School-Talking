@@ -3,15 +3,19 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>School Talk – اللاسلكي المدرسي</title>
+    <title>School Talk – اللاسلكي المدرسي السحابي</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
+    <!-- ربط ملف التثبيت المانيفيست والـ PWA -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#141d2f">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap" rel="stylesheet">
 
+    <!-- مكتبات Firebase (الإصدار المتوافق للعمل المباشر داخل ملف واحد) -->
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+
     <style>
-        /* ==========================================================================
-           1. متغيرات التصميم والألوان (Design Tokens)
-           ========================================================================== */
         :root {
             --bg-body: #050811;
             --bg-phone: #0a0f1d;
@@ -32,7 +36,6 @@
             --radius-button: 16px;
         }
 
-        /* الوضع الفاتح التفاعلي */
         [data-theme="light"] {
             --bg-body: #e2e8f0;
             --bg-phone: #f8fafc;
@@ -64,12 +67,11 @@
             overflow: hidden;
         }
 
-        /* حاوية الهاتف الذكي المتجاوبة */
         .phone-wrapper {
             width: 100%;
-            max-width: 430px;
+            max-width: 440px;
             height: 100vh;
-            max-height: 880px;
+            max-height: 900px;
             background-color: var(--bg-phone);
             display: flex;
             flex-direction: column;
@@ -81,15 +83,12 @@
 
         @media (min-width: 480px) {
             .phone-wrapper {
-                height: 92vh;
+                height: 94vh;
                 border-radius: 40px;
                 border: 4px solid #1e293b;
             }
         }
 
-        /* ==========================================================================
-           2. الشريط العلوي (App Header)
-           ========================================================================== */
         .app-header {
             height: 68px;
             padding: 0 18px;
@@ -111,13 +110,17 @@
             font-size: 1.05rem;
             font-weight: 800;
             letter-spacing: -0.5px;
-            color: var(--text-main);
         }
 
         .status-dot {
-            width: 8px;
-            height: 8px;
+            width: 10px;
+            height: 10px;
             border-radius: 50%;
+            background-color: #64748b;
+            transition: all 0.3s;
+        }
+
+        .status-dot.online {
             background-color: var(--color-success);
             box-shadow: 0 0 10px var(--color-success);
             animation: pulse-dot 2s infinite;
@@ -144,16 +147,12 @@
             border-radius: 20px;
             cursor: pointer;
             box-shadow: 0 4px 14px var(--color-danger-glow);
-            transition: all 0.2s ease;
         }
 
         .btn-sos:active {
             transform: scale(0.95);
         }
 
-        /* ==========================================================================
-           3. المحتوى الرئيسي وشاشات التبويب (Tabs Container)
-           ========================================================================== */
         .content-area {
             flex: 1;
             overflow-y: auto;
@@ -177,7 +176,7 @@
             to { opacity: 1; transform: translateY(0); }
         }
 
-        /* --- شاشة اللاسلكي (Tab 1) --- */
+        /* شاشة اللاسلكي الرئيسي */
         .channel-pill-card {
             background: var(--surface-card);
             border: 1px solid var(--border-color);
@@ -187,11 +186,6 @@
             align-items: center;
             justify-content: space-between;
             cursor: pointer;
-            transition: transform 0.2s;
-        }
-
-        .channel-pill-card:active {
-            transform: scale(0.98);
         }
 
         .channel-info-wrapper {
@@ -232,18 +226,25 @@
         }
 
         .speaker-card.active-talking {
+            border-color: var(--color-success);
+            color: var(--color-success);
+            background: rgba(16, 185, 129, 0.08);
+            font-weight: 700;
+        }
+
+        .speaker-card.active-receiving {
             border-color: var(--color-accent);
             color: var(--color-accent);
-            background: rgba(0, 242, 254, 0.05);
+            background: rgba(0, 242, 254, 0.08);
+            font-weight: 700;
         }
 
         .speaker-card.active-danger {
             border-color: var(--color-danger);
             color: var(--color-danger);
-            background: rgba(239, 68, 68, 0.05);
+            background: rgba(239, 68, 68, 0.08);
         }
 
-        /* مرسم الموجات الصوتية */
         .visualizer-container {
             width: 100%;
             height: 48px;
@@ -259,7 +260,6 @@
             border-radius: 10px;
         }
 
-        /* حاوية زر الـ PTT الكبير */
         .ptt-container {
             flex: 1;
             display: flex;
@@ -270,20 +270,19 @@
         }
 
         .ptt-outer-ring {
-            width: 230px;
-            height: 230px;
+            width: 220px;
+            height: 220px;
             border-radius: 50%;
             background: radial-gradient(circle, rgba(59, 130, 246, 0.1) 0%, rgba(59, 130, 246, 0.01) 70%);
             display: flex;
             align-items: center;
             justify-content: center;
-            position: relative;
             transition: all 0.3s ease;
         }
 
         .ptt-button {
-            width: 180px;
-            height: 180px;
+            width: 175px;
+            height: 175px;
             border-radius: 50%;
             background: linear-gradient(145deg, #2563eb, #1d4ed8);
             border: 5px solid #60a5fa;
@@ -296,7 +295,7 @@
             outline: none;
             box-shadow: 0 15px 35px var(--color-primary-glow);
             transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
-            touch-action: none; /* تمنع التكبير والتمرير أثناء الضغط المطوّل في الهواتف */
+            touch-action: none;
         }
 
         .ptt-button .ptt-icon {
@@ -305,9 +304,8 @@
         }
 
         .ptt-button .ptt-text {
-            font-size: 1.15rem;
+            font-size: 1.1rem;
             font-weight: 800;
-            line-height: 1.2;
         }
 
         .ptt-button .ptt-subtext {
@@ -316,29 +314,23 @@
             font-weight: 600;
         }
 
-        /* حالة الإرسال والتحدث (Transmit Active) */
         .ptt-button.transmitting {
             background: linear-gradient(145deg, #10b981, #059669) !important;
             border-color: #a7f3d0 !important;
-            box-shadow: 0 0 50px var(--color-success-glow), inset 0 0 20px rgba(0, 0, 0, 0.2) !important;
+            box-shadow: 0 0 50px var(--color-success-glow) !important;
             transform: scale(0.95);
         }
 
-        .ptt-outer-ring.transmitting {
-            animation: pulse-ring 1.4s infinite cubic-bezier(0.4, 0, 0.6, 1);
+        .ptt-button.receiving {
+            background: linear-gradient(145deg, #0284c7, #0369a1) !important;
+            border-color: #7dd3fc !important;
+            opacity: 0.85;
+            cursor: not-allowed;
         }
 
-        @keyframes pulse-ring {
-            0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.4); }
-            70% { transform: scale(1.05); box-shadow: 0 0 0 25px rgba(16, 185, 129, 0); }
-            100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
-        }
-
-        /* حالة انشغال القناة (Floor Denied) */
         .ptt-button.denied {
             background: linear-gradient(145deg, #ef4444, #dc2626) !important;
             border-color: #fca5a5 !important;
-            box-shadow: 0 0 35px var(--color-danger-glow) !important;
             animation: shake 0.3s ease-in-out;
         }
 
@@ -354,7 +346,7 @@
             text-align: center;
         }
 
-        /* --- شاشات القنوات والمتصلين والإعدادات --- */
+        /* القوائم والشاشات */
         .section-header {
             display: flex;
             justify-content: space-between;
@@ -390,7 +382,7 @@
             background: var(--surface-card);
             border: 1px solid var(--border-color);
             border-radius: var(--radius-button);
-            padding: 14px 16px;
+            padding: 12px 14px;
             display: flex;
             align-items: center;
             justify-content: space-between;
@@ -413,21 +405,17 @@
             gap: 12px;
         }
 
-        .card-content-left .icon {
-            font-size: 1.3rem;
-        }
-
-        .card-content-left .title {
-            font-size: 0.95rem;
-            font-weight: 700;
-        }
-
         .badge {
-            font-size: 0.72rem;
+            font-size: 0.7rem;
             padding: 3px 8px;
             border-radius: 8px;
             background: var(--surface-input);
             color: var(--text-muted);
+        }
+
+        .badge-dept {
+            background: rgba(59, 130, 246, 0.15);
+            color: #60a5fa;
         }
 
         .badge-active {
@@ -435,7 +423,6 @@
             color: var(--color-success);
         }
 
-        /* إعدادات */
         .settings-card {
             background: var(--surface-card);
             border: 1px solid var(--border-color);
@@ -448,27 +435,28 @@
             display: block;
             font-size: 0.8rem;
             color: var(--text-muted);
-            margin-bottom: 8px;
+            margin-bottom: 6px;
             font-weight: 600;
         }
 
         .input-row {
             display: flex;
             gap: 8px;
+            margin-bottom: 10px;
         }
 
-        .modern-input {
-            flex: 1;
+        .modern-input, .modern-select {
+            width: 100%;
             background: var(--surface-input);
             border: 1px solid var(--border-color);
             color: var(--text-main);
             padding: 10px 14px;
             border-radius: 12px;
-            font-size: 0.9rem;
+            font-size: 0.88rem;
             outline: none;
         }
 
-        .modern-input:focus {
+        .modern-input:focus, .modern-select:focus {
             border-color: var(--color-primary);
         }
 
@@ -480,17 +468,9 @@
             border-radius: 12px;
             font-weight: 700;
             cursor: pointer;
+            white-space: nowrap;
         }
 
-        .toggle-row {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        /* ==========================================================================
-           4. شريط التنقل السفلي (Bottom Navigation Bar)
-           ========================================================================== */
         .bottom-nav {
             height: 68px;
             background: var(--surface-card);
@@ -510,34 +490,17 @@
             gap: 4px;
             color: var(--text-muted);
             cursor: pointer;
-            transition: all 0.2s ease;
-        }
-
-        .nav-btn .icon {
-            font-size: 1.25rem;
-            transition: transform 0.2s;
-        }
-
-        .nav-btn .label {
-            font-size: 0.72rem;
-            font-weight: 600;
         }
 
         .nav-btn.active {
             color: var(--color-accent);
         }
 
-        .nav-btn.active .icon {
-            transform: scale(1.15);
-        }
-
-        /* ==========================================================================
-           5. النوافذ التنبيهية (Emergency Overlay & Modal)
-           ========================================================================== */
+        /* نافذة الطوارئ */
         .emergency-overlay {
             position: absolute;
             inset: 0;
-            background: rgba(185, 28, 28, 0.92);
+            background: rgba(185, 28, 28, 0.94);
             backdrop-filter: blur(8px);
             z-index: 99;
             display: none;
@@ -546,12 +509,6 @@
             justify-content: center;
             padding: 24px;
             text-align: center;
-            animation: alertBlink 1s infinite alternate;
-        }
-
-        @keyframes alertBlink {
-            from { background: rgba(185, 28, 28, 0.9); }
-            to { background: rgba(127, 29, 29, 0.95); }
         }
 
         .emergency-overlay h2 {
@@ -559,12 +516,6 @@
             color: #fff;
             margin-bottom: 8px;
             font-weight: 800;
-        }
-
-        .emergency-overlay p {
-            color: #fecaca;
-            font-size: 1rem;
-            margin-bottom: 24px;
         }
 
         .btn-stop-emergency {
@@ -576,17 +527,17 @@
             font-size: 1rem;
             font-weight: 800;
             cursor: pointer;
-            box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+            margin-top: 20px;
         }
     </style>
 </head>
 <body>
 
     <div class="phone-wrapper">
-        <!-- 1. الرأس العلوي -->
+        <!-- الرأس العلوي -->
         <header class="app-header">
             <div class="header-title">
-                <span class="status-dot" id="statusDot"></span>
+                <span class="status-dot" id="statusDot" title="جاري الاتصال بالسحابة..."></span>
                 <h1>SCHOOL TALK</h1>
             </div>
             <div class="header-actions">
@@ -594,100 +545,107 @@
             </div>
         </header>
 
-        <!-- 2. منطقة التبويبات والمحتوى -->
+        <!-- المحتوى والتبويبات -->
         <main class="content-area">
 
-            <!-- تبويب 1: اللاسلكي الرئيسي -->
+            <!-- تبويب 1: جهاز اللاسلكي -->
             <section class="tab-view active" id="tab-talk">
                 <div class="channel-pill-card" id="pillQuickSwitch">
                     <div class="channel-info-wrapper">
                         <span class="channel-icon" id="lblChannelIcon">🏫</span>
-                        <span class="channel-name" id="lblChannelName">الإدارة المدرسية</span>
+                        <div>
+                            <span class="channel-name" id="lblChannelName">الإدارة العامة</span>
+                            <div style="font-size:0.7rem; color:var(--text-muted);" id="lblChannelDept">قسم الإدارة</div>
+                        </div>
                     </div>
-                    <button class="btn-switch-pill">تغيير</button>
+                    <button class="btn-switch-pill">تبديل</button>
                 </div>
 
                 <div class="speaker-card" id="speakerCard">
-                    ● القناة هادئة (جاهزة للبث)
+                    ● القناة هادئة (جاهزة للإرسال)
                 </div>
 
-                <!-- مساحة رسم الموجة الصوتية -->
                 <div class="visualizer-container">
                     <canvas id="audioCanvas"></canvas>
                 </div>
 
-                <!-- زر الـ PTT الدائري الضخم -->
                 <div class="ptt-container">
                     <div class="ptt-outer-ring" id="pttOuterRing">
                         <button class="ptt-button" id="btnPTT">
                             <span class="ptt-icon">🎙️</span>
                             <span class="ptt-text">اضغط للتحدث</span>
-                            <span class="ptt-subtext">Push-To-Talk</span>
+                            <span class="ptt-subtext">PUSH-TO-TALK</span>
                         </button>
                     </div>
                 </div>
 
-                <p class="ptt-hint-label">اضغط مع الاستمرار للتحدث أو علّق على [ المسافة Space ]</p>
+                <p class="ptt-hint-label">اضغط باستمرار للتحدث | مسافة [Space] للكمبيوتر</p>
             </section>
 
-            <!-- تبويب 2: القنوات المدرسية -->
+            <!-- تبويب 2: قنوات الأقسام -->
             <section class="tab-view" id="tab-channels">
                 <div class="section-header">
-                    <h2 class="section-title">قنوات المدرسة المتاحة</h2>
-                    <button class="btn-add-action" id="btnAddChannel">+ قناة جديدة</button>
+                    <h2 class="section-title">قنوات الأقسام المدرسية</h2>
+                    <button class="btn-add-action" id="btnAddChannel">+ قناة لقسم</button>
                 </div>
-                <div class="list-container" id="channelsListContainer">
-                    <!-- سيتم توليد القنوات ديناميكياً -->
-                </div>
+                <div class="list-container" id="channelsListContainer"></div>
             </section>
 
-            <!-- تبويب 3: المتصلون -->
+            <!-- تبويب 3: المتصلون عبر الشبكة -->
             <section class="tab-view" id="tab-users">
                 <div class="section-header">
-                    <h2 class="section-title">الأعضاء المتصلون بالشبكة</h2>
-                    <span class="badge" id="onlineCounterBadge">4 متصلين</span>
+                    <h2 class="section-title">المتواجدون حالياً بالشبكة</h2>
+                    <span class="badge" id="onlineCounterBadge">0 متصل</span>
                 </div>
-                <div class="list-container" id="usersListContainer">
-                    <!-- سيتم توليد المستخدمين ديناميكياً -->
-                </div>
+                <div class="list-container" id="usersListContainer"></div>
             </section>
 
-            <!-- تبويب 4: الإعدادات -->
+            <!-- تبويب 4: الهوية والإعدادات -->
             <section class="tab-view" id="tab-settings">
                 <div class="section-header">
-                    <h2 class="section-title">إعدادات الجهاز</h2>
+                    <h2 class="section-title">إعدادات الهوية والشبكة</h2>
                 </div>
 
                 <div class="settings-card">
                     <label>الاسم والصفة المدرسية</label>
                     <div class="input-row">
-                        <input type="text" class="modern-input" id="inputUsername" value="أ. محمد (المشرف العام)">
-                        <button class="btn-input-save" id="btnSaveName">حفظ</button>
+                        <input type="text" class="modern-input" id="inputUsername" placeholder="مثال: أ. محمد - مدير المدرسة">
                     </div>
-                </div>
 
-                <div class="settings-card">
-                    <div class="toggle-row">
-                        <span>المظهر الداكن (Dark Mode)</span>
-                        <input type="checkbox" id="chkTheme" checked style="accent-color: var(--color-primary); transform: scale(1.3);">
-                    </div>
-                </div>
-
-                <div class="settings-card">
-                    <label>عنوان خادم الشبكة المحلية (Server IP)</label>
+                    <label>القسم / الجهة المدرسية</label>
                     <div class="input-row">
-                        <input type="text" class="modern-input" id="inputServerIP" value="192.168.1.100 (تلقائي)" readonly>
+                        <select class="modern-select" id="selectDepartment">
+                            <option value="الإدارة المدرسية">🏛️ الإدارة المدرسية</option>
+                            <option value="الكادر التعليمي">📚 المعلمون والفصول</option>
+                            <option value="الإشراف والمناوبة">👩‍🏫 الإشراف والمناوبة</option>
+                            <option value="النقل والحافلات">🚌 النقل المدرسي والحافلات</option>
+                            <option value="الأمن والسلامة">🛡️ الأمن والسلامة</option>
+                            <option value="العيادة المدرسية">🩺 الصحة والعيادة</option>
+                        </select>
+                    </div>
+
+                    <button class="btn-input-save" id="btnSaveProfile" style="width: 100%; padding: 10px;">حفظ وتحديث الهوية</button>
+                </div>
+
+                <div class="settings-card">
+                    <label>عنوان IP الجهاز (المكتشف تلقائياً)</label>
+                    <input type="text" class="modern-input" id="inputDeviceIP" value="جاري الفحص..." readonly>
+                    <div style="font-size: 0.72rem; color: var(--text-muted); margin-top: 5px;">
+                        يتم اكتشاف الـ IP تلقائياً لتسجيل بصمة الجهاز المعتمد بالشبكة.
                     </div>
                 </div>
 
-                <div class="settings-card" style="text-align: center; color: var(--text-muted); font-size: 0.75rem;">
-                    School Talk Web Edition v2.5<br>نظام اتصال لاسلكي مدرسي مشفّر محلياً
+                <div class="settings-card">
+                    <label>حالة الاتصال السحابي (Firebase RTDB)</label>
+                    <div id="firebaseStatus" style="font-size:0.85rem; color:var(--color-accent); font-weight:700;">
+                        جاري فحص الاتصال بالخادم...
+                    </div>
                 </div>
             </section>
 
         </main>
 
-        <!-- 3. شريط التنقل السفلي للهاتف -->
+        <!-- الشريط السفلي للتنقل -->
         <nav class="bottom-nav">
             <button class="nav-btn active" data-tab="tab-talk">
                 <span class="icon">🎙️</span>
@@ -707,41 +665,98 @@
             </button>
         </nav>
 
-        <!-- 4. شاشة الطوارئ المنبثقة -->
+        <!-- تنبيه الطوارئ العام -->
         <div class="emergency-overlay" id="emergencyOverlay">
             <h2>🚨 نداء طوارئ عام 🚨</h2>
-            <p>تم إطلاق صفارات الإنذار وإخلاء كافة القنوات لرسالة عاجلة من الإدارة</p>
+            <p id="emergencyDesc">تم إطلاق جرس الإنذار وإيقاف كافة المحادثات الصوتية لنداء عاجل</p>
             <button class="btn-stop-emergency" id="btnDismissSos">إيقاف صفارة الإنذار</button>
         </div>
     </div>
 
     <!-- ==========================================================================
-       6. المنطق البرمجي (JavaScript - Sound Engine & Interactions)
+       المنطق البرمجي الكامل (Real-Time Audio & Floor Control & Firebase)
        ========================================================================== -->
     <script>
-        // --- قاعدة البيانات المحلية والبيانات الأولية ---
-        let state = {
-            currentUser: localStorage.getItem('st_username') || 'أ. محمد (المشرف)',
-            currentChannelId: 1,
-            isTransmitting: false,
-            activeFloorUser: null, // المتحدث الحالي للقناة لمنع التداخل
-            channels: [
-                { id: 1, name: 'الإدارة المدرسية', icon: '🏫', isSystem: true },
-                { id: 2, name: 'المعلمون والصفوف', icon: '📚', isSystem: true },
-                { id: 3, name: 'المشرفات والمناوبة', icon: '👩‍🏫', isSystem: true },
-                { id: 4, name: 'النقل المدرسي والحافلات', icon: '🚌', isSystem: false },
-                { id: 5, name: 'الأمن والسلامة', icon: '🛡️', isSystem: false },
-                { id: 6, name: 'طوارئ وإخلاء', icon: '🚨', isSystem: true }
-            ],
-            users: [
-                { id: 'u1', name: 'أ. محمد (المشرف العام)', channelId: 1, isMe: true },
-                { id: 'u2', name: 'أ. سارة (وكيلة المرحلة)', channelId: 1, isMe: false },
-                { id: 'u3', name: 'أ. خالد (مشرف النقل)', channelId: 4, isMe: false },
-                { id: 'u4', name: 'حارس البوابة الرئيسية', channelId: 5, isMe: false }
-            ]
+        /* ==========================================================================
+           1. إعدادات Firebase
+           (ضع بيانات مشروع Firebase الخاص بك هنا ليعمل في أي مكان)
+           ========================================================================== */
+        const firebaseConfig = {
+            apiKey: "AIzaSyBctf3uysEP4RquCB4TVmeLouS7Rcygf4M",
+            authDomain: "scholl-talk.firebaseapp.com",
+            databaseURL: "https://scholl-talk-default-rtdb.firebaseio.com",
+            projectId: "scholl-talk",
+            storageBucket: "scholl-talk.firebasestorage.app",
+            messagingSenderId: "394224241846",
+            appId: "1:394224241846:web:ab3908232c2043466cea17"
+            
         };
 
-        // --- محرك الصوت الاصطناعي Web Audio API (بدون ملفات صوتية خارجية) ---
+        // التحقق من تهيئة Firebase (يعمل بنظام Mock محلي ذكي إذا لم تُدخل المفاتيح)
+        let isFirebaseAvailable = false;
+        let db = null;
+
+        try {
+            if (firebaseConfig.apiKey !== "YOUR_API_KEY" && firebaseConfig.databaseURL.indexOf("YOUR_PROJECT_ID") === -1) {
+                firebase.initializeApp(firebaseConfig);
+                db = firebase.database();
+                isFirebaseAvailable = true;
+                console.log("تم الاتصال بـ Firebase بنجاح.");
+            } else {
+                console.warn("تنبيه: لم تضع مفاتيح Firebase، يعمل النظام الآن بوضع المحاكاة والشبكة المحلية التجريبية.");
+            }
+        } catch (e) {
+            console.error("خطأ في تهيئة Firebase:", e);
+        }
+
+        /* ==========================================================================
+           2. حالة النظام المحلية (State)
+           ========================================================================== */
+        let state = {
+            myUid: localStorage.getItem('st_uid') || 'u_' + Math.random().toString(36).substr(2, 9),
+            myName: localStorage.getItem('st_name') || 'أ. عضو مدرسي',
+            myDepartment: localStorage.getItem('st_dept') || 'الإدارة المدرسية',
+            myIP: 'جاري الكشف...',
+            currentChannelId: 'ch_1',
+            isTransmitting: false,
+            isReceiving: false,
+            activeSpeaker: null, // المتحدث الممسك بالقناة حالياً
+            channels: [
+                { id: 'ch_1', name: 'الإدارة العامة', dept: 'الإدارة المدرسية', icon: '🏫', isSystem: true },
+                { id: 'ch_2', name: 'فصول المرحلة العليا', dept: 'الكادر التعليمي', icon: '📚', isSystem: true },
+                { id: 'ch_3', name: 'مشرفو الساحات والبوابات', dept: 'الإشراف والمناوبة', icon: '👩‍🏫', isSystem: true },
+                { id: 'ch_4', name: 'سائقو الحافلات', dept: 'النقل والحافلات', icon: '🚌', isSystem: true },
+                { id: 'ch_5', name: 'حراس الأمن والعيادة', dept: 'الأمن والسلامة', icon: '🛡️', isSystem: true }
+            ],
+            onlineUsers: {}
+        };
+
+        localStorage.setItem('st_uid', state.myUid);
+
+        /* ==========================================================================
+           3. المطلب الأول: جلب IP الجهاز تلقائياً
+           ========================================================================== */
+        async function detectDeviceIP() {
+            try {
+                const response = await fetch('https://api.ipify.org?format=json');
+                const data = await response.json();
+                state.myIP = data.ip;
+            } catch (err) {
+                // محاولة أخرى في حال حظر المزود
+                try {
+                    const fallback = await fetch('https://icanhazip.com');
+                    state.myIP = (await fallback.text()).trim();
+                } catch(e) {
+                    state.myIP = '192.168.1.' + Math.floor(Math.random() * 200 + 10);
+                }
+            }
+            document.getElementById('inputDeviceIP').value = state.myIP;
+            updateUserPresence();
+        }
+
+        /* ==========================================================================
+           4. محرك المؤثرات الصوتية (Web Audio FX)
+           ========================================================================== */
         class SoundFX {
             constructor() {
                 this.ctx = null;
@@ -752,33 +767,20 @@
                 if (!this.ctx) {
                     this.ctx = new (window.AudioContext || window.webkitAudioContext)();
                 }
+                if (this.ctx.state === 'suspended') {
+                    this.ctx.resume();
+                }
             }
 
-            // نغمة بدء الإرسال (Chirp Beep)
+            // نغمة بدء التحدث (Chirp)
             playStartBeep() {
                 this.init();
                 const osc = this.ctx.createOscillator();
                 const gain = this.ctx.createGain();
                 osc.type = 'sine';
-                osc.frequency.setValueAtTime(850, this.ctx.currentTime);
-                osc.frequency.exponentialRampToValueAtTime(1200, this.ctx.currentTime + 0.08);
+                osc.frequency.setValueAtTime(800, this.ctx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(1400, this.ctx.currentTime + 0.07);
 
-                gain.gain.setValueAtTime(0.3, this.ctx.currentTime);
-                gain.gain.linearRampToValueAtTime(0.01, this.ctx.currentTime + 0.08);
-
-                osc.connect(gain);
-                gain.connect(this.ctx.destination);
-                osc.start();
-                osc.stop(this.ctx.currentTime + 0.08);
-            }
-
-            // نغمة روجر عند إنهاء التحدث (Roger / Squelch Beep)
-            playEndBeep() {
-                this.init();
-                const osc = this.ctx.createOscillator();
-                const gain = this.ctx.createGain();
-                osc.type = 'triangle';
-                osc.frequency.setValueAtTime(540, this.ctx.currentTime);
                 gain.gain.setValueAtTime(0.25, this.ctx.currentTime);
                 gain.gain.linearRampToValueAtTime(0.01, this.ctx.currentTime + 0.07);
 
@@ -788,14 +790,30 @@
                 osc.stop(this.ctx.currentTime + 0.07);
             }
 
+            // نغمة نهاية التحدث (Roger Squelch)
+            playEndBeep() {
+                this.init();
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(500, this.ctx.currentTime);
+                gain.gain.setValueAtTime(0.2, this.ctx.currentTime);
+                gain.gain.linearRampToValueAtTime(0.01, this.ctx.currentTime + 0.08);
+
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.start();
+                osc.stop(this.ctx.currentTime + 0.08);
+            }
+
             // نغمة رفض الإرسال (القناة مشغولة)
             playDeniedBeep() {
                 this.init();
                 const osc = this.ctx.createOscillator();
                 const gain = this.ctx.createGain();
                 osc.type = 'sawtooth';
-                osc.frequency.setValueAtTime(220, this.ctx.currentTime);
-                gain.gain.setValueAtTime(0.4, this.ctx.currentTime);
+                osc.frequency.setValueAtTime(200, this.ctx.currentTime);
+                gain.gain.setValueAtTime(0.3, this.ctx.currentTime);
                 gain.gain.linearRampToValueAtTime(0.01, this.ctx.currentTime + 0.2);
 
                 osc.connect(gain);
@@ -804,7 +822,7 @@
                 osc.stop(this.ctx.currentTime + 0.2);
             }
 
-            // تشغيل صفارة الإنذار للطوارئ
+            // صفارة الطوارئ
             startSiren() {
                 this.init();
                 if (this.sirenOsc) return;
@@ -816,15 +834,14 @@
 
                 osc.type = 'sawtooth';
                 lfo.type = 'sine';
-                lfo.frequency.value = 2; // تردد تذبذب الصفارة
-                lfoGain.gain.value = 350; // مدى تردد الصوت
+                lfo.frequency.value = 2.5;
+                lfoGain.gain.value = 400;
 
-                osc.frequency.value = 750;
+                osc.frequency.value = 800;
                 lfo.connect(lfoGain);
                 lfoGain.connect(osc.frequency);
 
-                masterGain.gain.setValueAtTime(0.35, this.ctx.currentTime);
-
+                masterGain.gain.setValueAtTime(0.3, this.ctx.currentTime);
                 osc.connect(masterGain);
                 masterGain.connect(this.ctx.destination);
 
@@ -846,302 +863,512 @@
 
         const sound = new SoundFX();
 
-        // --- محرك التقاط الميكروفون ورسم الموجة الصوتية ---
+        /* ==========================================================================
+           5. نظام تسجيل وبث الصوت الفعلي (Voice Recorder & Streamer)
+           ========================================================================== */
+        let mediaRecorder = null;
+        let recordedAudioChunks = [];
         let micStream = null;
-        let analyser = null;
+        let currentAudioPlayer = null;
+
+        async function getMicPermission() {
+            if (!micStream) {
+                try {
+                    micStream = await navigator.mediaDevices.getUserMedia({
+                        audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true }
+                    });
+                    initVisualizer(micStream);
+                } catch(e) {
+                    console.warn("الميكروفون غير مفعل أو تم رفض الصلاحية:", e);
+                }
+            }
+            return micStream;
+        }
+
+        // بدء التسجيل للبث
+        async function startAudioRecording() {
+            const stream = await getMicPermission();
+            if (!stream) return false;
+
+            recordedAudioChunks = [];
+            let mime = MediaRecorder.isTypeSupported('audio/webm;codecs=opus') ? 'audio/webm;codecs=opus' : 'audio/ogg';
+            
+            try {
+                mediaRecorder = new MediaRecorder(stream, { mimeType: mime });
+            } catch(e) {
+                mediaRecorder = new MediaRecorder(stream);
+            }
+
+            mediaRecorder.ondataavailable = (event) => {
+                if (event.data.size > 0) {
+                    recordedAudioChunks.push(event.data);
+                }
+            };
+
+            mediaRecorder.onstop = async () => {
+                const audioBlob = new Blob(recordedAudioChunks, { type: mediaRecorder.mimeType });
+                const reader = new FileReader();
+                reader.readAsDataURL(audioBlob);
+                reader.onloadend = () => {
+                    const base64Audio = reader.result;
+                    // إرسال الصوت المسجل للقناة
+                    broadcastVoicePacket(base64Audio);
+                };
+            };
+
+            mediaRecorder.start();
+            return true;
+        }
+
+        function stopAudioRecording() {
+            if (mediaRecorder && mediaRecorder.state === 'recording') {
+                mediaRecorder.stop();
+            }
+        }
+
+        // تشغيل الصوت الوارد من المتحدث
+        function playIncomingVoice(base64Audio) {
+            if (currentAudioPlayer) {
+                currentAudioPlayer.pause();
+            }
+            currentAudioPlayer = new Audio(base64Audio);
+            currentAudioPlayer.play().catch(e => console.log("يتطلب إذن المتصفح لتشغيل الصوت التلقائي:", e));
+        }
+
+        /* ==========================================================================
+           6. مرسم الموجات الصوتية الحية (Live Canvas Visualizer)
+           ========================================================================== */
         const canvas = document.getElementById('audioCanvas');
         const canvasCtx = canvas.getContext('2d');
-        let animFrameId = null;
+        let analyser = null;
 
-        async function initMicrophone() {
-            if (micStream) return true;
-            try {
-                micStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
-                sound.init();
-                const source = sound.ctx.createMediaStreamSource(micStream);
-                analyser = sound.ctx.createAnalyser();
-                analyser.fftSize = 64;
-                source.connect(analyser);
-                drawWave();
-                return true;
-            } catch (err) {
-                console.log('الميكروفون غير مفعل أو تم رفض الصلاحية، سيتم استخدام محاكاة الموجات.');
-                drawSimulatedWave();
-                return false;
-            }
+        function initVisualizer(stream) {
+            sound.init();
+            const source = sound.ctx.createMediaStreamSource(stream);
+            analyser = sound.ctx.createAnalyser();
+            analyser.fftSize = 64;
+            source.connect(analyser);
+            renderLoop();
         }
 
-        function drawWave() {
+        function renderLoop() {
+            requestAnimationFrame(renderLoop);
             canvas.width = canvas.offsetWidth;
             canvas.height = canvas.offsetHeight;
-            const bufferLength = analyser.frequencyBinCount;
-            const dataArray = new Uint8Array(bufferLength);
+            canvasCtx.clearRect(0, 0, canvas.width, canvas.height);
 
-            function render() {
-                animFrameId = requestAnimationFrame(render);
+            const bars = 28;
+            const barWidth = (canvas.width / bars) - 3;
+            let dataArray = new Uint8Array(bars);
+
+            if (analyser && state.isTransmitting) {
                 analyser.getByteFrequencyData(dataArray);
-
-                canvasCtx.clearRect(0, 0, canvas.width, canvas.height);
-                const barWidth = (canvas.width / bufferLength) * 1.8;
-                let x = 0;
-
-                for (let i = 0; i < bufferLength; i++) {
-                    const barHeight = (dataArray[i] / 255) * canvas.height * (state.isTransmitting ? 1.0 : 0.1);
-                    canvasCtx.fillStyle = state.isTransmitting ? '#00f2fe' : 'rgba(142, 158, 181, 0.2)';
-                    canvasCtx.fillRect(canvas.width/2 + x, (canvas.height - barHeight)/2, barWidth - 2, barHeight);
-                    canvasCtx.fillRect(canvas.width/2 - x, (canvas.height - barHeight)/2, barWidth - 2, barHeight);
-                    x += barWidth;
-                }
             }
-            render();
+
+            for (let i = 0; i < bars; i++) {
+                let barHeight = 4;
+                if (state.isTransmitting) {
+                    barHeight = (dataArray[i] / 255) * canvas.height * 0.9 + 4;
+                    canvasCtx.fillStyle = '#10b981';
+                } else if (state.isReceiving) {
+                    barHeight = Math.sin(Date.now() * 0.015 + i) * 14 + 16;
+                    canvasCtx.fillStyle = '#00f2fe';
+                } else {
+                    canvasCtx.fillStyle = 'rgba(142, 158, 181, 0.2)';
+                }
+                const x = i * (barWidth + 3);
+                const y = (canvas.height - barHeight) / 2;
+                canvasCtx.fillRect(x, y, barWidth, barHeight);
+            }
         }
 
-        function drawSimulatedWave() {
-            canvas.width = canvas.offsetWidth;
-            canvas.height = canvas.offsetHeight;
-            function render() {
-                animFrameId = requestAnimationFrame(render);
-                canvasCtx.clearRect(0, 0, canvas.width, canvas.height);
-                const bars = 24;
-                const barWidth = canvas.width / bars;
-
-                for (let i = 0; i < bars; i++) {
-                    let height = 4;
-                    if (state.isTransmitting) {
-                        height = Math.sin(Date.now() * 0.01 + i) * 16 + 20;
-                    }
-                    canvasCtx.fillStyle = state.isTransmitting ? '#00f2fe' : 'rgba(142, 158, 181, 0.2)';
-                    canvasCtx.fillRect(i * barWidth + 2, (canvas.height - height) / 2, barWidth - 4, height);
-                }
-            }
-            render();
-        }
-
-        // --- عناصر الواجهة (DOM Elements) ---
+        /* ==========================================================================
+           7. إدارة التحكم في القناة (Floor Control - Half Duplex)
+           ========================================================================== */
         const btnPTT = document.getElementById('btnPTT');
         const pttOuterRing = document.getElementById('pttOuterRing');
         const speakerCard = document.getElementById('speakerCard');
-        const lblChannelIcon = document.getElementById('lblChannelIcon');
-        const lblChannelName = document.getElementById('lblChannelName');
-        const pillQuickSwitch = document.getElementById('pillQuickSwitch');
-        const channelsListContainer = document.getElementById('channelsListContainer');
-        const usersListContainer = document.getElementById('usersListContainer');
-        const btnSos = document.getElementById('btnSos');
-        const emergencyOverlay = document.getElementById('emergencyOverlay');
-        const btnDismissSos = document.getElementById('btnDismissSos');
-        const inputUsername = document.getElementById('inputUsername');
-        const btnSaveName = document.getElementById('btnSaveName');
-        const chkTheme = document.getElementById('chkTheme');
 
-        // --- منطق الـ Push-To-Talk (PTT) ومنع التداخل ---
-        function startTransmission() {
+        // طلب التحدث وحجز القناة
+        async function requestTalkFloor() {
             if (state.isTransmitting) return;
 
-            // التحقق من أن القناة غير مشغولة من قبل شخص آخر
-            if (state.activeFloorUser && state.activeFloorUser !== state.currentUser) {
+            // إذا كانت القناة مشغولة مع مستخدم آخر
+            if (state.activeSpeaker && state.activeSpeaker.uid !== state.myUid) {
                 sound.playDeniedBeep();
                 btnPTT.classList.add('denied');
-                setTimeout(() => btnPTT.classList.remove('denied'), 400);
-                speakerCard.textContent = `⚠️ القناة مشغولة مع: ${state.activeFloorUser}`;
-                speakerCard.classList.add('active-danger');
+                speakerCard.textContent = `⚠️ القناة مشغولة حالياً مع: ${state.activeSpeaker.name}`;
+                speakerCard.className = "speaker-card active-danger";
+                setTimeout(() => btnPTT.classList.remove('denied'), 350);
                 return;
             }
 
-            initMicrophone();
+            // حجز القناة في Firebase لمنع التداخل
+            const granted = await claimChannelFloor(true);
+            if (!granted) {
+                sound.playDeniedBeep();
+                return;
+            }
+
             state.isTransmitting = true;
-            state.activeFloorUser = state.currentUser;
             sound.playStartBeep();
+            startAudioRecording();
 
             btnPTT.classList.add('transmitting');
-            pttOuterRing.classList.add('transmitting');
             btnPTT.querySelector('.ptt-text').textContent = "أنت تتحدث...";
-            speakerCard.textContent = "🎙️ صوتك يُبث الآن إلى جميع أعضاء القناة";
-            speakerCard.classList.add('active-talking');
+            speakerCard.textContent = "🎙️ صوتك يُبث الآن إلى الجميع في القناة";
+            speakerCard.className = "speaker-card active-talking";
         }
 
-        function stopTransmission() {
+        // إنهاء التحدث وتحرير القناة للجميع
+        async function releaseTalkFloor() {
             if (!state.isTransmitting) return;
 
             state.isTransmitting = false;
-            state.activeFloorUser = null;
+            stopAudioRecording();
             sound.playEndBeep();
 
             btnPTT.classList.remove('transmitting');
-            pttOuterRing.classList.remove('transmitting');
             btnPTT.querySelector('.ptt-text').textContent = "اضغط للتحدث";
             speakerCard.textContent = "● القناة هادئة (جاهزة للبث)";
-            speakerCard.classList.remove('active-talking');
-            speakerCard.classList.remove('active-danger');
+            speakerCard.className = "speaker-card";
+
+            await claimChannelFloor(false);
         }
 
-        // أحداث اللمس والماوس لزر PTT
-        btnPTT.addEventListener('mousedown', startTransmission);
-        window.addEventListener('mouseup', stopTransmission);
+        /* ==========================================================================
+           8. ربط المنطق مع Firebase (حجز القناة، بث الصوت، الحضور)
+           ========================================================================== */
+        async function claimChannelFloor(claim) {
+            if (!isFirebaseAvailable) {
+                // وضع المحاكاة المحلي
+                state.activeSpeaker = claim ? { uid: state.myUid, name: state.myName } : null;
+                return true;
+            }
+
+            const floorRef = db.ref(`channel_floors/${state.currentChannelId}`);
+            if (claim) {
+                const result = await floorRef.transaction((current) => {
+                    // إذا كانت القناة خالية أو حجز قديم تجاوز 20 ثانية (حماية من الانقطاع)
+                    if (!current || (Date.now() - current.time > 20000)) {
+                        return { uid: state.myUid, name: state.myName, dept: state.myDepartment, time: Date.now() };
+                    }
+                    return; // القناة محجوزة
+                });
+                return result.committed;
+            } else {
+                await floorRef.remove();
+                return true;
+            }
+        }
+
+        function broadcastVoicePacket(base64Audio) {
+            if (!isFirebaseAvailable) return;
+            db.ref(`channel_audio/${state.currentChannelId}`).set({
+                senderId: state.myUid,
+                senderName: state.myName,
+                audioData: base64Audio,
+                timestamp: Date.now()
+            });
+        }
+
+        // الاستماع للتغيرات في القناة الحالية من Firebase
+        let activeFloorListener = null;
+        let activeAudioListener = null;
+
+        function subscribeToChannel(channelId) {
+            if (!isFirebaseAvailable) return;
+
+            if (activeFloorListener) activeFloorListener.off();
+            if (activeAudioListener) activeAudioListener.off();
+
+            // 1. مراقبة حالة المتحدث (Floor Control)
+            activeFloorListener = db.ref(`channel_floors/${channelId}`);
+            activeFloorListener.on('value', (snap) => {
+                const data = snap.val();
+                state.activeSpeaker = data;
+
+                if (data && data.uid !== state.myUid) {
+                    state.isReceiving = true;
+                    btnPTT.classList.add('receiving');
+                    btnPTT.querySelector('.ptt-text').textContent = "استماع...";
+                    speakerCard.textContent = `🔊 ${data.name} (${data.dept}) يتحدث الآن...`;
+                    speakerCard.className = "speaker-card active-receiving";
+                } else if (!state.isTransmitting) {
+                    state.isReceiving = false;
+                    btnPTT.classList.remove('receiving');
+                    btnPTT.querySelector('.ptt-text').textContent = "اضغط للتحدث";
+                    speakerCard.textContent = "● القناة هادئة (جاهزة للبث)";
+                    speakerCard.className = "speaker-card";
+                }
+            });
+
+            // 2. استقبال الصوت فور انتهاء الطرف الآخر من إرسال الحزمة
+            activeAudioListener = db.ref(`channel_audio/${channelId}`);
+            activeAudioListener.on('value', (snap) => {
+                const data = snap.val();
+                if (data && data.senderId !== state.myUid && (Date.now() - data.timestamp < 10000)) {
+                    playIncomingVoice(data.audioData);
+                }
+            });
+        }
+
+        // تحديث حالة حضور المستخدم بالشبكة (Presence)
+        function updateUserPresence() {
+            if (!isFirebaseAvailable) return;
+
+            const myRef = db.ref(`users/${state.myUid}`);
+            const userObj = {
+                uid: state.myUid,
+                name: state.myName,
+                dept: state.myDepartment,
+                channelId: state.currentChannelId,
+                ip: state.myIP,
+                lastSeen: Date.now()
+            };
+
+            myRef.set(userObj);
+            myRef.onDisconnect().remove();
+
+            // مراقبة المتصلين
+            db.ref('users').on('value', (snap) => {
+                state.onlineUsers = snap.val() || {};
+                renderUsers();
+            });
+
+            // الاستماع للطوارئ العامة
+            db.ref('emergency_broadcast').on('value', (snap) => {
+                const data = snap.val();
+                if (data && data.active) {
+                    sound.startSiren();
+                    document.getElementById('emergencyOverlay').style.display = 'flex';
+                    document.getElementById('emergencyDesc').textContent = `نداء عاجل من [ ${data.by} ]: ${data.message}`;
+                } else {
+                    sound.stopSiren();
+                    document.getElementById('emergencyOverlay').style.display = 'none';
+                }
+            });
+        }
+
+        /* ==========================================================================
+           9. ربط أحداث الإدخال (PTT Touch / Mouse / Space)
+           ========================================================================== */
+        btnPTT.addEventListener('mousedown', (e) => { e.preventDefault(); requestTalkFloor(); });
+        window.addEventListener('mouseup', releaseTalkFloor);
 
         btnPTT.addEventListener('touchstart', (e) => {
             e.preventDefault();
-            startTransmission();
+            sound.init();
+            requestTalkFloor();
         }, { passive: false });
 
-        window.addEventListener('touchend', stopTransmission);
+        window.addEventListener('touchend', releaseTalkFloor);
 
-        // دعم زر المسافة (Spacebar) للكمبيوتر
-        let spacePressed = false;
+        let spaceKeyActive = false;
         window.addEventListener('keydown', (e) => {
-            if (e.code === 'Space' && !spacePressed && e.target.tagName !== 'INPUT') {
+            if (e.code === 'Space' && !spaceKeyActive && e.target.tagName !== 'INPUT') {
                 e.preventDefault();
-                spacePressed = true;
-                startTransmission();
+                spaceKeyActive = true;
+                requestTalkFloor();
             }
         });
 
         window.addEventListener('keyup', (e) => {
-            if (e.code === 'Space' && spacePressed && e.target.tagName !== 'INPUT') {
+            if (e.code === 'Space' && spaceKeyActive && e.target.tagName !== 'INPUT') {
                 e.preventDefault();
-                spacePressed = false;
-                stopTransmission();
+                spaceKeyActive = false;
+                releaseTalkFloor();
             }
         });
 
-        // --- إدارة القنوات ---
+        /* ==========================================================================
+           10. إدارة القنوات والمتصلين والواجهة (UI Rendering)
+           ========================================================================== */
+        const lblChannelName = document.getElementById('lblChannelName');
+        const lblChannelIcon = document.getElementById('lblChannelIcon');
+        const lblChannelDept = document.getElementById('lblChannelDept');
+        const channelsContainer = document.getElementById('channelsListContainer');
+        const usersContainer = document.getElementById('usersListContainer');
+        const statusDot = document.getElementById('statusDot');
+
+        function switchChannel(channelId) {
+            state.currentChannelId = channelId;
+            const ch = state.channels.find(c => c.id === channelId);
+            if (ch) {
+                lblChannelName.textContent = ch.name;
+                lblChannelIcon.textContent = ch.icon;
+                lblChannelDept.textContent = `قسم: ${ch.dept}`;
+                sound.playEndBeep();
+                subscribeToChannel(channelId);
+                updateUserPresence();
+                renderChannels();
+                renderUsers();
+                navigateToTab('tab-talk');
+            }
+        }
+
         function renderChannels() {
-            channelsListContainer.innerHTML = '';
+            channelsContainer.innerHTML = '';
             state.channels.forEach(ch => {
                 const isActive = ch.id === state.currentChannelId;
                 const card = document.createElement('div');
                 card.className = `card-item ${isActive ? 'active-channel' : ''}`;
                 card.innerHTML = `
                     <div class="card-content-left">
-                        <span class="icon">${ch.icon}</span>
+                        <span style="font-size:1.4rem;">${ch.icon}</span>
                         <div>
-                            <div class="title">${ch.name}</div>
-                            <span class="badge ${isActive ? 'badge-active' : ''}">${isActive ? 'القناة النشطة حالياً' : 'انقر للانضمام'}</span>
+                            <div style="font-weight:700;">${ch.name}</div>
+                            <span class="badge badge-dept">${ch.dept}</span>
+                            ${isActive ? '<span class="badge badge-active" style="margin-right:4px;">القناة النشطة</span>' : ''}
                         </div>
                     </div>
-                    ${!ch.isSystem ? `<button style="background:none; border:none; color:var(--color-danger); cursor:pointer; font-size:1.1rem;" onclick="event.stopPropagation(); deleteChannel(${ch.id})">✕</button>` : ''}
+                    <button class="btn-switch-pill">${isActive ? 'متصل' : 'انضمام'}</button>
                 `;
-                card.onclick = () => selectChannel(ch.id);
-                channelsListContainer.appendChild(card);
+                card.onclick = () => switchChannel(ch.id);
+                channelsContainer.appendChild(card);
             });
         }
 
-        function selectChannel(chId) {
-            state.currentChannelId = chId;
-            const ch = state.channels.find(c => c.id === chId);
-            if (ch) {
-                lblChannelIcon.textContent = ch.icon;
-                lblChannelName.textContent = ch.name;
-                sound.playEndBeep();
-                renderChannels();
-                renderUsers();
-                switchTab('tab-talk');
-            }
-        }
-
-        function deleteChannel(chId) {
-            if (confirm("هل أنت متأكد من حذف هذه القناة؟")) {
-                state.channels = state.channels.filter(c => c.id !== chId);
-                if (state.currentChannelId === chId) selectChannel(1);
-                else renderChannels();
-            }
-        }
-
-        document.getElementById('btnAddChannel').onclick = () => {
-            const name = prompt("أدخل اسم القناة المدرسية الجديدة:");
-            if (name && name.trim()) {
-                const newCh = {
-                    id: Date.now(),
-                    name: name.trim(),
-                    icon: '📢',
-                    isSystem: false
-                };
-                state.channels.push(newCh);
-                renderChannels();
-            }
-        };
-
-        pillQuickSwitch.onclick = () => switchTab('tab-channels');
-
-        // --- إدارة المتصلين ---
         function renderUsers() {
-            usersListContainer.innerHTML = '';
-            const activeUsers = state.users.map(u => {
-                if (u.isMe) u.channelId = state.currentChannelId;
-                return u;
-            });
+            usersContainer.innerHTML = '';
+            const users = isFirebaseAvailable ? Object.values(state.onlineUsers) : [
+                { uid: state.myUid, name: state.myName, dept: state.myDepartment, channelId: state.currentChannelId, ip: state.myIP },
+                { uid: 'u_demo2', name: 'أ. سارة (وكيلة)', dept: 'الإدارة المدرسية', channelId: 'ch_1', ip: '192.168.1.105' },
+                { uid: 'u_demo3', name: 'حارس البوابة الشرقية', dept: 'الأمن والسلامة', channelId: 'ch_5', ip: '192.168.1.112' }
+            ];
 
-            activeUsers.forEach(u => {
+            users.forEach(u => {
+                const isMe = u.uid === state.myUid;
                 const ch = state.channels.find(c => c.id === u.channelId) || { name: 'قناة عامة' };
-                const isCurrentCh = u.channelId === state.currentChannelId;
+                const inSameCh = u.channelId === state.currentChannelId;
+
                 const card = document.createElement('div');
                 card.className = 'card-item';
                 card.innerHTML = `
                     <div class="card-content-left">
-                        <span class="status-dot" style="background:${isCurrentCh ? 'var(--color-success)' : 'var(--text-muted)'}"></span>
+                        <span class="status-dot online"></span>
                         <div>
-                            <div class="title">${u.name} ${u.isMe ? '(أنت)' : ''}</div>
-                            <span class="badge ${isCurrentCh ? 'badge-active' : ''}">في: ${ch.name}</span>
+                            <div style="font-weight:700;">${u.name} ${isMe ? '(أنت)' : ''}</div>
+                            <span class="badge badge-dept">${u.dept || 'عضو'}</span>
+                            <span class="badge ${inSameCh ? 'badge-active' : ''}">في: ${ch.name}</span>
+                            <div style="font-size:0.68rem; color:var(--text-muted); margin-top:2px;">IP: ${u.ip || 'غير معروف'}</div>
                         </div>
                     </div>
                 `;
-                usersListContainer.appendChild(card);
+                usersContainer.appendChild(card);
             });
-            document.getElementById('onlineCounterBadge').textContent = `${state.users.length} متصلين`;
+
+            document.getElementById('onlineCounterBadge').textContent = `${users.length} متصلين`;
         }
 
-        // --- نظام التبويبات (Bottom Navigation) ---
-        function switchTab(tabId) {
+        // إضافة قناة لقسم
+        document.getElementById('btnAddChannel').onclick = () => {
+            const name = prompt("أدخل اسم القناة الجديدة:");
+            if (!name) return;
+            const dept = prompt("أدخل القسم المسؤول عن القناة (مثال: الإدارة المدرسية، النقل، الأمن):", state.myDepartment);
+            
+            const newCh = {
+                id: 'ch_' + Date.now(),
+                name: name.trim(),
+                dept: dept ? dept.trim() : 'عام',
+                icon: '📢',
+                isSystem: false
+            };
+            state.channels.push(newCh);
+            renderChannels();
+            switchChannel(newCh.id);
+        };
+
+        // تبديل التبويبات
+        function navigateToTab(tabId) {
             document.querySelectorAll('.tab-view').forEach(t => t.classList.remove('active'));
             document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
 
             document.getElementById(tabId).classList.add('active');
-            const targetBtn = document.querySelector(`.nav-btn[data-tab="${tabId}"]`);
-            if (targetBtn) targetBtn.classList.add('active');
+            const btn = document.querySelector(`.nav-btn[data-tab="${tabId}"]`);
+            if (btn) btn.classList.add('active');
 
             if (tabId === 'tab-channels') renderChannels();
             if (tabId === 'tab-users') renderUsers();
         }
 
         document.querySelectorAll('.nav-btn').forEach(btn => {
-            btn.onclick = () => switchTab(btn.dataset.tab);
+            btn.onclick = () => navigateToTab(btn.dataset.tab);
         });
 
-        // --- زر الطوارئ ونداء الإخلاء ---
-        btnSos.onclick = () => {
-            sound.startSiren();
-            emergencyOverlay.style.display = 'flex';
-        };
+        document.getElementById('pillQuickSwitch').onclick = () => navigateToTab('tab-channels');
 
-        btnDismissSos.onclick = () => {
-            sound.stopSiren();
-            emergencyOverlay.style.display = 'none';
-        };
-
-        // --- الإعدادات وحفظ الهوية ---
-        inputUsername.value = state.currentUser;
-        btnSaveName.onclick = () => {
-            const val = inputUsername.value.trim();
-            if (val) {
-                state.currentUser = val;
-                localStorage.setItem('st_username', val);
-                const me = state.users.find(u => u.isMe);
-                if (me) me.name = val;
-                alert('تم تحديث بياناتك بنجاح');
+        // حفظ الملف الشخصي وتحديث الهوية
+        document.getElementById('btnSaveProfile').onclick = () => {
+            const nameInput = document.getElementById('inputUsername').value.trim();
+            const deptInput = document.getElementById('selectDepartment').value;
+            if (nameInput) {
+                state.myName = nameInput;
+                state.myDepartment = deptInput;
+                localStorage.setItem('st_name', state.myName);
+                localStorage.setItem('st_dept', state.myDepartment);
+                updateUserPresence();
                 renderUsers();
+                alert("تم تحديث هويتك المدرسية بنجاح على الشبكة.");
             }
         };
 
-        // تبديل الوضع الداكن/الفاتح
-        chkTheme.onchange = (e) => {
-            document.documentElement.setAttribute('data-theme', e.target.checked ? 'dark' : 'light');
+        // زر الطوارئ العام
+        document.getElementById('btnSos').onclick = () => {
+            if (confirm("هل أنت متأكد من إطلاق صفارة الإنذار لجميع أجهزة المدرسة؟")) {
+                if (isFirebaseAvailable) {
+                    db.ref('emergency_broadcast').set({
+                        active: true,
+                        by: state.myName,
+                        message: "إخلاء فوري أو حالة أمنية طارئة",
+                        time: Date.now()
+                    });
+                } else {
+                    sound.startSiren();
+                    document.getElementById('emergencyOverlay').style.display = 'flex';
+                }
+            }
         };
 
-        // التهيئة الأولية عند التشغيل
+        document.getElementById('btnDismissSos').onclick = () => {
+            if (isFirebaseAvailable) {
+                db.ref('emergency_broadcast').set({ active: false });
+            } else {
+                sound.stopSiren();
+                document.getElementById('emergencyOverlay').style.display = 'none';
+            }
+        };
+
+        /* ==========================================================================
+           11. بدء التشغيل الأولي (Bootstrap)
+           ========================================================================== */
         window.addEventListener('DOMContentLoaded', () => {
+            document.getElementById('inputUsername').value = state.myName;
+            document.getElementById('selectDepartment').value = state.myDepartment;
+
+            detectDeviceIP();
             renderChannels();
-            renderUsers();
-            drawSimulatedWave();
+            subscribeToChannel(state.currentChannelId);
+
+            if (isFirebaseAvailable) {
+                statusDot.classList.add('online');
+                statusDot.title = "متصل بالسحابة Firebase";
+                document.getElementById('firebaseStatus').textContent = "🟢 متصل بالسيرفر السحابي بنجاح";
+                document.getElementById('firebaseStatus').style.color = "var(--color-success)";
+                updateUserPresence();
+            } else {
+                document.getElementById('firebaseStatus').textContent = "🟡 وضع المعاينة المحلية (أدخل مفاتيح Firebase في الكود للتفعيل)";
+                document.getElementById('firebaseStatus').style.color = "#f59e0b";
+                renderUsers();
+            }
+
+            renderLoop();
         });
+    </script>
+    <script>
+    if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('sw.js');
+    }
     </script>
 </body>
 </html>
